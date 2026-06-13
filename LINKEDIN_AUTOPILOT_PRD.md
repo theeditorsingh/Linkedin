@@ -150,7 +150,7 @@ The system generates the post body, hashtags, first comment, and an **AI image g
 | **Database** | Supabase (PostgreSQL) | Free: 500MB DB, 1GB file storage, built-in auth |
 | **Queue / Jobs** | Upstash QStash | Free: 500 messages/day — enough for 1–3 posts/day |
 | **Redis (cache)** | Upstash Redis | Free: 10k commands/day |
-| **Image storage** | Cloudflare R2 | Free: 10GB storage, 0 egress cost |
+| **Image storage** | Supabase Storage | Free: 1GB included in existing Supabase project — no extra account needed |
 | **Cron / Scheduler** | Vercel Cron Jobs | Free: 2 cron jobs on free tier |
 
 ### AI & Integrations
