@@ -78,10 +78,8 @@ export default function SettingsPage() {
             )}
             <div className="bg-[#f1f3f4] rounded-2xl p-3">
               <p className="text-[12px] text-[#5f6368] leading-relaxed">
-                Heads up: LinkedIn doesn&apos;t let this app auto-detect posts you delete directly on
-                LinkedIn. To keep things in sync, either <span className="font-medium">delete from the app</span> (it
-                removes the post on LinkedIn too) or use <span className="font-medium">&quot;Mark as removed&quot;</span> on
-                a published post.
+                To remove a published post, <span className="font-medium">delete it from the app</span> — that
+                deletes it on LinkedIn too.
               </p>
             </div>
             <a href="/api/auth/linkedin">
