@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { extractFromUrl, extractFromText } from "@/lib/extract/source";
-import { generatePost } from "@/lib/gemini/generate";
+import { generatePost } from "@/lib/llm/generate";
 import { sendImageNeededAlert } from "@/lib/slack/notify";
 import { getOrCreateOwner } from "@/lib/user";
 

@@ -1,8 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Post generation via Groq (free, OpenAI-compatible API). No SDK — plain fetch keeps
+// the serverless bundle small and avoids ESM-interop crashes (see jsdom lesson).
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL = "llama-3.3-70b-versatile";
 
-// The API key gets sent as an HTTP header. If a BOM (U+FEFF) or stray whitespace got
-// pasted into the GEMINI_API_KEY env var, the header fails with a "ByteString" error.
-// Keep only printable ASCII (0x21-0x7E) — API keys never contain anything else.
+// API keys ride in the Authorization header; a stray BOM/whitespace would throw a
+// "ByteString" error. Keep only printable ASCII.
 function cleanKey(key: string): string {
   let out = "";
   for (let i = 0; i < key.length; i++) {
@@ -12,35 +14,40 @@ function cleanKey(key: string): string {
   return out;
 }
 
-const genAI = new GoogleGenerativeAI(cleanKey(process.env.GEMINI_API_KEY ?? ""));
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-// The Gemini SDK throws "Cannot convert argument to a ByteString" if the prompt contains
-// a BOM (U+FEFF) or other zero-width / control chars. Strip them before every request.
-const ZERO_WIDTH = new Set([0xfeff, 0x200b, 0x200c, 0x200d, 0x2060]);
-function cleanPrompt(str: string): string {
-  let out = "";
-  for (let i = 0; i < str.length; i++) {
-    const code = str.charCodeAt(i);
-    if (ZERO_WIDTH.has(code)) continue;
-    const isControl =
-      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || code === 0x7f;
-    if (isControl) continue;
-    out += str[i];
-  }
-  return out;
-}
-
-async function generate(prompt: string) {
-  const result = await model.generateContent(cleanPrompt(prompt));
-  return result.response.text().trim();
-}
-
 export interface GeneratedPost {
   body: string;
   firstComment: string;
   hashtags: string[];
   imagePrompt: string;
+}
+
+async function callGroq(prompt: string): Promise<string> {
+  const apiKey = cleanKey(process.env.GROQ_API_KEY ?? "");
+  if (!apiKey) throw new Error("GROQ_API_KEY is not set");
+
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${errText.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Groq returned an empty response");
+  return String(content).trim();
 }
 
 export async function generatePost(
@@ -77,11 +84,9 @@ Respond with ONLY valid JSON in this exact format:
   "imagePrompt": "a detailed image generation prompt for ChatGPT image model — professional LinkedIn aesthetic, no text overlay, describes a visual scene relevant to the post topic"
 }`;
 
-  const text = await generate(prompt);
-
+  const text = await callGroq(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Gemini returned invalid JSON");
-
+  if (!jsonMatch) throw new Error("LLM returned invalid JSON");
   return JSON.parse(jsonMatch[0]) as GeneratedPost;
 }
 
@@ -103,8 +108,8 @@ Respond with ONLY valid JSON:
   "imagePrompt": "updated image prompt for ChatGPT image model"
 }`;
 
-  const text = await generate(prompt);
+  const text = await callGroq(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Gemini returned invalid JSON");
+  if (!jsonMatch) throw new Error("LLM returned invalid JSON");
   return JSON.parse(jsonMatch[0]);
 }
