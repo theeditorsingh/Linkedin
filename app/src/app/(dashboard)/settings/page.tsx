@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, ExternalLink, Copy, Check } from "lucide-react";
@@ -14,6 +15,7 @@ interface SettingsData {
 
 export default function SettingsPage() {
   const [data, setData] = useState<SettingsData | null>(null);
+  const searchParams = useSearchParams();
   const [copiedSlack, setCopiedSlack] = useState(false);
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -23,6 +25,14 @@ export default function SettingsPage() {
       .then(setData)
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    const linkedin = searchParams.get("linkedin");
+    const error = searchParams.get("error");
+    if (linkedin === "connected") toast.success("LinkedIn connected!");
+    if (error === "auth_failed") toast.error("LinkedIn auth failed — check app products (see below).");
+    if (error === "no_code") toast.error("LinkedIn didn't return an auth code.");
+  }, [searchParams]);
 
   async function copySlackUrl() {
     await navigator.clipboard.writeText(`${appUrl}/api/slack`);
@@ -80,6 +90,11 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-500">
               Connect your LinkedIn account to enable automatic publishing.
             </p>
+            <div className="bg-amber-950 border border-amber-800 rounded-xl p-3 space-y-1">
+              <p className="text-xs text-amber-400 font-medium">Required: 2 products on your LinkedIn App</p>
+              <p className="text-xs text-amber-600">1. Sign In with LinkedIn using OpenID Connect</p>
+              <p className="text-xs text-amber-600">2. Share on LinkedIn</p>
+            </div>
             <a href="/api/auth/linkedin">
               <Button className="w-full h-12 bg-[#0A66C2] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm">
                 <ExternalLink size={16} className="mr-2" />
