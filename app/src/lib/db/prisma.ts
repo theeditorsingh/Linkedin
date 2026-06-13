@@ -7,20 +7,21 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // Strip pgbouncer param — not supported by raw pg driver
-  const url = (process.env.DATABASE_URL ?? "").replace("?pgbouncer=true", "");
+  // Use DIRECT_URL (session pooler port 5432) — transaction pooler (6543)
+  // has restrictions with certain Prisma query types
+  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "";
 
   const pool = new Pool({
-    connectionString: url,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-    max: 1, // Serverless: keep pool small
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    max: 1,
   });
 
   const adapter = new PrismaPg(pool);
 
   return new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: ["error"],
   });
 }
 

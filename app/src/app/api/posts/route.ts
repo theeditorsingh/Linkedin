@@ -18,7 +18,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(posts);
   } catch (err) {
-    console.error("[GET /api/posts]", err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    const code = (err as { code?: string })?.code;
+    console.error("[GET /api/posts]", { message, code, err });
+    return NextResponse.json({ error: message, code }, { status: 500 });
   }
 }
