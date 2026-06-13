@@ -23,8 +23,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await req.json();
+  try {
+    return await handlePatch(id, await req.json());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[PATCH /api/posts/:id]", message, err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handlePatch(id: string, body: any) {
   // Handle regenerate action
   if (body.action === "regenerate") {
     const post = await prisma.post.findUnique({ where: { id } });
@@ -88,17 +97,23 @@ export async function PATCH(
     }
   }
 
-  // If scheduling, enqueue QStash job
+  // If scheduling, enqueue an exact-time QStash job.
+  // Non-fatal: the DB row is already SCHEDULED and the daily cron is the safety net,
+  // so a QStash hiccup must not fail the request (that caused the empty-500 JSON error).
   if (body.status === "SCHEDULED" && body.scheduledAt && process.env.QSTASH_TOKEN && process.env.APP_URL) {
-    const scheduledAt = new Date(body.scheduledAt);
-    const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
+    try {
+      const scheduledAt = new Date(body.scheduledAt);
+      const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
 
-    const qstash = new Client({ token: cleanKey(process.env.QSTASH_TOKEN) });
-    await qstash.publishJSON({
-      url: `${cleanKey(process.env.APP_URL)}/api/publish/${id}`,
-      delay: delaySeconds,
-      body: { postId: id },
-    });
+      const qstash = new Client({ token: cleanKey(process.env.QSTASH_TOKEN) });
+      await qstash.publishJSON({
+        url: `${cleanKey(process.env.APP_URL)}/api/publish/${id}`,
+        delay: delaySeconds,
+        body: { postId: id },
+      });
+    } catch (err) {
+      console.warn("[qstash] enqueue failed (cron will still publish):", err);
+    }
   }
 
   return NextResponse.json(updated);

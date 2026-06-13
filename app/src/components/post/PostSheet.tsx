@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { Post } from "@/types";
 import { Drawer } from "vaul";
 import { STATUS_META } from "@/lib/status";
-import { Check, Trash2, CalendarClock, Zap, X, AlertTriangle, Pencil } from "lucide-react";
+import { Check, Trash2, CalendarClock, Zap, X, AlertTriangle, Pencil, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { MediaSection } from "./MediaSection";
+import { defaultScheduleTime, nowISOMin } from "@/lib/datetime";
 
 interface PostSheetProps {
   post: Post;
@@ -18,17 +19,14 @@ interface PostSheetProps {
 
 type Mode = "view" | "editing" | "scheduling" | "rejecting" | "deleting";
 
-function defaultScheduleTime(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`;
-}
-
-function nowISOMin(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Parse an error response safely — the body may be empty or non-JSON.
+async function errMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    return data?.error ?? fallback;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
 }
 
 export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
@@ -86,7 +84,7 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
           imagePrompt: ePrompt.trim() || null,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to save");
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to save"));
       const updated = await res.json();
       setLive((prev) => ({ ...prev, ...updated }));
       setMode("view");
@@ -108,7 +106,7 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "SCHEDULED", scheduledAt: at }),
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to schedule");
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to schedule"));
       toast.success(
         publishNow ? "Queued for publishing now" : `Scheduled for ${format(new Date(at), "MMM d, h:mm a")}`
       );
@@ -124,11 +122,12 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
   async function handleReject() {
     setBusy(true);
     try {
-      await fetch(`/api/posts/${live.id}`, {
+      const res = await fetch(`/api/posts/${live.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "REJECTED", rejectReason: reason }),
       });
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to reject"));
       toast.success("Post rejected");
       onUpdate();
       onClose();
@@ -142,7 +141,8 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
   async function handleDelete() {
     setBusy(true);
     try {
-      await fetch(`/api/posts/${live.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/posts/${live.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to delete"));
       toast.success("Post deleted");
       onUpdate();
       onClose();
@@ -277,6 +277,25 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
 
                 {/* Media — format selector, prompts, multi-image / PDF upload */}
                 <MediaSection post={live} onChange={onUpdate} />
+
+                {/* Published — link to the live post */}
+                {live.status === "PUBLISHED" && live.linkedinPostUrn && (
+                  <div className="bg-[#e6f4ea] rounded-3xl p-4 space-y-3">
+                    <p className="text-[13px] text-[#188038] font-medium">
+                      🎉 Published
+                      {live.publishedAt && ` · ${format(new Date(live.publishedAt), "MMM d, h:mm a")}`}
+                    </p>
+                    <a
+                      href={`https://www.linkedin.com/feed/update/${live.linkedinPostUrn}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full h-12 bg-[#1a73e8] text-white rounded-full font-medium text-[14px] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+                    >
+                      <ExternalLink size={18} />
+                      View live post on LinkedIn
+                    </a>
+                  </div>
+                )}
 
                 {/* ---- Action area ---- */}
                 {mode === "view" && (
