@@ -5,6 +5,22 @@ export interface ExtractedSource {
   url: string;
 }
 
+// U+FEFF (BOM) and other non-Latin1 invisibles trigger "ByteString" errors in the
+// Gemini SDK's request layer. Drop control chars (keep \t \n \r) and zero-width chars.
+const ZERO_WIDTH = new Set([0xfeff, 0x200b, 0x200c, 0x200d, 0x2060]);
+function sanitize(str: string): string {
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (ZERO_WIDTH.has(code)) continue;
+    const isControl =
+      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || code === 0x7f;
+    if (isControl) continue;
+    out += str[i];
+  }
+  return out;
+}
+
 function decodeEntities(str: string): string {
   return str
     .replace(/&amp;/g, "&")
@@ -26,24 +42,26 @@ function getMeta(html: string, property: string): string | null {
   ];
   for (const re of patterns) {
     const m = html.match(re);
-    if (m?.[1]) return decodeEntities(m[1].trim());
+    if (m?.[1]) return sanitize(decodeEntities(m[1].trim()));
   }
   return null;
 }
 
 function htmlToText(html: string): string {
-  return decodeEntities(
+  const decoded = decodeEntities(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
       .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
       .replace(/<!--[\s\S]*?-->/g, " ")
-      // Block-level tags → newline so paragraphs survive
+      // Block-level tags -> newline so paragraphs survive
       .replace(/<\/(p|div|section|article|h[1-6]|li|br)>/gi, "\n")
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, " ")
-  )
+  );
+
+  return sanitize(decoded)
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/^\s+|\s+$/gm, "")
@@ -68,7 +86,7 @@ export async function extractFromUrl(url: string): Promise<ExtractedSource> {
   // Title: prefer og:title, fall back to <title>
   const title =
     getMeta(html, "og:title") ??
-    decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "");
+    sanitize(decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? ""));
 
   const ogImageUrl = getMeta(html, "og:image");
 
@@ -97,8 +115,8 @@ export async function extractFromUrl(url: string): Promise<ExtractedSource> {
 
 export function extractFromText(text: string): ExtractedSource {
   return {
-    title: text.slice(0, 80).replace(/\n/g, " ").trim(),
-    text: text.trim(),
+    title: sanitize(text.slice(0, 80).replace(/\n/g, " ").trim()),
+    text: sanitize(text.trim()),
     ogImageUrl: null,
     url: "",
   };

@@ -3,6 +3,27 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+// The Gemini SDK throws "Cannot convert argument to a ByteString" if the prompt contains
+// a BOM (U+FEFF) or other zero-width / control chars. Strip them before every request.
+const ZERO_WIDTH = new Set([0xfeff, 0x200b, 0x200c, 0x200d, 0x2060]);
+function cleanPrompt(str: string): string {
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (ZERO_WIDTH.has(code)) continue;
+    const isControl =
+      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || code === 0x7f;
+    if (isControl) continue;
+    out += str[i];
+  }
+  return out;
+}
+
+async function generate(prompt: string) {
+  const result = await model.generateContent(cleanPrompt(prompt));
+  return result.response.text().trim();
+}
+
 export interface GeneratedPost {
   body: string;
   firstComment: string;
@@ -44,8 +65,7 @@ Respond with ONLY valid JSON in this exact format:
   "imagePrompt": "a detailed image generation prompt for ChatGPT image model — professional LinkedIn aesthetic, no text overlay, describes a visual scene relevant to the post topic"
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = await generate(prompt);
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Gemini returned invalid JSON");
@@ -71,8 +91,7 @@ Respond with ONLY valid JSON:
   "imagePrompt": "updated image prompt for ChatGPT image model"
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = await generate(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Gemini returned invalid JSON");
   return JSON.parse(jsonMatch[0]);
