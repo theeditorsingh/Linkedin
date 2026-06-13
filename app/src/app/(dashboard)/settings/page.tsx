@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { CheckCircle2, XCircle, ExternalLink, Copy, Check, ChevronRight, LogOut, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Copy, Check, ChevronRight, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsData {
@@ -28,7 +28,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [data, setData] = useState<SettingsData | null>(null);
   const [copied, setCopied] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   useEffect(() => {
@@ -40,26 +39,6 @@ export default function SettingsPage() {
     setCopied(true);
     toast.success("Copied!");
     setTimeout(() => setCopied(false), 2000);
-  }
-
-  async function handleSync() {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/sync", { method: "POST" });
-      const r = await res.json();
-      if (!res.ok) throw new Error(r.error ?? "Sync failed");
-      if (!r.readAllowed) {
-        toast.error("LinkedIn didn't allow reading post status. Use 'Mark as removed' on a post instead.");
-      } else if (r.removed > 0) {
-        toast.success(`Synced — ${r.removed} post(s) marked as removed.`);
-      } else {
-        toast.success(`Synced — all ${r.checked} published post(s) are still live.`);
-      }
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setSyncing(false);
-    }
   }
 
   async function handleLogout() {
@@ -97,17 +76,14 @@ export default function SettingsPage() {
                 Token valid until {format(new Date(data.linkedinExpiresAt), "MMM d, yyyy")}
               </p>
             )}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="w-full h-11 mt-1 bg-[#1a73e8] text-white rounded-full text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-              {syncing ? "Syncing…" : "Sync with LinkedIn"}
-            </button>
-            <p className="text-[11px] text-[#9aa0a6]">
-              Checks published posts and marks any you deleted on LinkedIn as removed. Also runs daily automatically.
-            </p>
+            <div className="bg-[#f1f3f4] rounded-2xl p-3">
+              <p className="text-[12px] text-[#5f6368] leading-relaxed">
+                Heads up: LinkedIn doesn&apos;t let this app auto-detect posts you delete directly on
+                LinkedIn. To keep things in sync, either <span className="font-medium">delete from the app</span> (it
+                removes the post on LinkedIn too) or use <span className="font-medium">&quot;Mark as removed&quot;</span> on
+                a published post.
+              </p>
+            </div>
             <a href="/api/auth/linkedin">
               <button className="w-full h-11 bg-white border border-[#dadce0] text-[#3c4043] rounded-full text-[14px] font-medium">
                 Reconnect
