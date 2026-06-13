@@ -1,8 +1,9 @@
 import { WebClient } from "@slack/web-api";
+import { cleanKey } from "@/lib/env";
 
-const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
-const CHANNEL = process.env.SLACK_CHANNEL_ID!;
-const APP_URL = process.env.APP_URL!;
+const slack = new WebClient(cleanKey(process.env.SLACK_BOT_TOKEN));
+const CHANNEL = cleanKey(process.env.SLACK_CHANNEL_ID);
+const APP_URL = cleanKey(process.env.APP_URL);
 
 export async function sendImageNeededAlert(
   postId: string,

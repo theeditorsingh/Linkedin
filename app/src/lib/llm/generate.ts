@@ -1,18 +1,9 @@
 // Post generation via Groq (free, OpenAI-compatible API). No SDK — plain fetch keeps
 // the serverless bundle small and avoids ESM-interop crashes (see jsdom lesson).
+import { cleanKey } from "@/lib/env";
+
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
-
-// API keys ride in the Authorization header; a stray BOM/whitespace would throw a
-// "ByteString" error. Keep only printable ASCII.
-function cleanKey(key: string): string {
-  let out = "";
-  for (let i = 0; i < key.length; i++) {
-    const code = key.charCodeAt(i);
-    if (code >= 0x21 && code <= 0x7e) out += key[i];
-  }
-  return out;
-}
 
 export interface GeneratedPost {
   body: string;

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Receiver } from "@upstash/qstash";
 import { publishScheduledPost } from "@/lib/publisher";
+import { cleanKey } from "@/lib/env";
 
 const receiver = new Receiver({
-  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+  currentSigningKey: cleanKey(process.env.QSTASH_CURRENT_SIGNING_KEY),
+  nextSigningKey: cleanKey(process.env.QSTASH_NEXT_SIGNING_KEY),
 });
 
 export async function POST(

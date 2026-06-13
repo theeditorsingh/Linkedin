@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import crypto from "crypto";
+import { cleanKey } from "@/lib/env";
 
 function verifySlackSignature(req: NextRequest, body: string): boolean {
-  const secret = process.env.SLACK_SIGNING_SECRET ?? "";
+  const secret = cleanKey(process.env.SLACK_SIGNING_SECRET);
   const timestamp = req.headers.get("x-slack-request-timestamp") ?? "";
   const signature = req.headers.get("x-slack-signature") ?? "";
   const baseString = `v0:${timestamp}:${body}`;

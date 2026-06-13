@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { cleanKey } from "@/lib/env";
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  cleanKey(process.env.SUPABASE_URL),
+  cleanKey(process.env.SUPABASE_SERVICE_ROLE_KEY)
 );
 
 const BUCKET = "post-images";

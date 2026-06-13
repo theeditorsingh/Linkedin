@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { regeneratePost } from "@/lib/llm/generate";
 import { sendApprovalRequest } from "@/lib/slack/notify";
 import { Client } from "@upstash/qstash";
+import { cleanKey } from "@/lib/env";
 
 export async function GET(
   _req: NextRequest,
@@ -72,9 +73,9 @@ export async function PATCH(
     const scheduledAt = new Date(body.scheduledAt);
     const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
 
-    const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+    const qstash = new Client({ token: cleanKey(process.env.QSTASH_TOKEN) });
     await qstash.publishJSON({
-      url: `${process.env.APP_URL}/api/publish/${id}`,
+      url: `${cleanKey(process.env.APP_URL)}/api/publish/${id}`,
       delay: delaySeconds,
       body: { postId: id },
     });
