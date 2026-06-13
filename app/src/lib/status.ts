@@ -19,6 +19,7 @@ export const STATUS_META: Record<PostStatus, StatusMeta> = {
   PUBLISHED: { label: "Published", chipBg: "bg-[#e6f4ea]", chipText: "text-[#188038]", dot: "bg-[#34a853]" },
   REJECTED: { label: "Rejected", chipBg: "bg-[#fce8e6]", chipText: "text-[#c5221f]", dot: "bg-[#ea4335]" },
   FAILED: { label: "Failed", chipBg: "bg-[#fce8e6]", chipText: "text-[#c5221f]", dot: "bg-[#ea4335]" },
+  REMOVED: { label: "Removed from LinkedIn", chipBg: "bg-[#f1f3f4]", chipText: "text-[#5f6368]", dot: "bg-[#9aa0a6]" },
 };
 
 // Friendly filter groups for the board chips
@@ -34,7 +35,7 @@ export const FILTER_GROUPS: FilterGroup[] = [
   { id: "scheduled", label: "Scheduled", statuses: ["APPROVED", "SCHEDULED"] },
   { id: "published", label: "Published", statuses: ["PUBLISHED"] },
   { id: "ideas", label: "Ideas", statuses: ["IDEA", "DRAFTING"] },
-  { id: "rejected", label: "Rejected", statuses: ["REJECTED", "FAILED"] },
+  { id: "archive", label: "Archive", statuses: ["REJECTED", "FAILED", "REMOVED"] },
 ];
 
 // Sort priority — most actionable first so they surface at the top of "All"
@@ -48,6 +49,7 @@ const PRIORITY: PostStatus[] = [
   "PUBLISHED",
   "REJECTED",
   "FAILED",
+  "REMOVED",
 ];
 
 export function statusRank(status: PostStatus): number {

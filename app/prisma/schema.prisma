@@ -87,6 +87,7 @@ enum PostStatus {
   PUBLISHED
   REJECTED
   FAILED
+  REMOVED
 
   @@map("post_status")
 }

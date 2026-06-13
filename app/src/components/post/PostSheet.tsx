@@ -119,6 +119,26 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
     }
   }
 
+  async function handleMarkRemoved() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${live.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REMOVED" }),
+      });
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to update"));
+      const updated = await res.json();
+      setLive((prev) => ({ ...prev, ...updated }));
+      toast.success("Marked as removed");
+      onUpdate();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePublishNow() {
     setBusy(true);
     try {
@@ -309,6 +329,22 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
                       <ExternalLink size={18} />
                       View live post on LinkedIn
                     </a>
+                    <button
+                      onClick={handleMarkRemoved}
+                      disabled={busy}
+                      className="w-full h-10 text-[#5f6368] text-[12px] disabled:opacity-60"
+                    >
+                      Deleted it on LinkedIn? Mark as removed
+                    </button>
+                  </div>
+                )}
+
+                {/* Removed note */}
+                {live.status === "REMOVED" && (
+                  <div className="bg-[#f1f3f4] rounded-3xl p-4">
+                    <p className="text-[13px] text-[#5f6368]">
+                      This post is no longer live on LinkedIn (removed there or deleted).
+                    </p>
                   </div>
                 )}
 
@@ -410,8 +446,11 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
                       <p className="text-[15px] font-medium text-[#1f1f1f]">Delete this post?</p>
                     </div>
                     <p className="text-[13px] text-[#5f6368] leading-relaxed">
-                      This permanently removes the post, its versions, and any uploaded image.
-                      <span className="text-[#c5221f] font-medium"> This can&apos;t be undone.</span>
+                      This permanently removes the post, its versions, and any uploaded image
+                      {live.status === "PUBLISHED" && live.linkedinPostUrn
+                        ? " — and deletes it from LinkedIn too"
+                        : ""}
+                      .<span className="text-[#c5221f] font-medium"> This can&apos;t be undone.</span>
                     </p>
                     <button
                       onClick={handleDelete}

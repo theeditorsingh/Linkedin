@@ -4,6 +4,8 @@ import { regeneratePost } from "@/lib/llm/generate";
 import { sendApprovalRequest } from "@/lib/slack/notify";
 import { Client } from "@upstash/qstash";
 import { cleanKey } from "@/lib/env";
+import { decrypt } from "@/lib/encrypt";
+import { deletePost as deleteLinkedInPost } from "@/lib/linkedin/publish";
 
 export async function GET(
   _req: NextRequest,
@@ -124,6 +126,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // If this post is live on LinkedIn, delete it there too (best-effort, non-fatal)
+  const post = await prisma.post.findUnique({
+    where: { id },
+    include: { user: { include: { oauthTokens: true } } },
+  });
+  if (post?.status === "PUBLISHED" && post.linkedinPostUrn) {
+    const token = post.user.oauthTokens.find((t) => t.provider === "linkedin");
+    if (token) {
+      try {
+        await deleteLinkedInPost(decrypt(token.accessToken), post.linkedinPostUrn);
+      } catch (err) {
+        console.warn("[delete] LinkedIn delete failed (removing locally anyway):", err);
+      }
+    }
+  }
+
   // Remove dependent rows first — no DB-level cascade is configured
   await prisma.$transaction([
     prisma.approval.deleteMany({ where: { postId: id } }),

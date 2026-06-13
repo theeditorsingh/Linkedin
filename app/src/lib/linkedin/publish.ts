@@ -56,6 +56,57 @@ export async function publishPost(
   return data.id as string;
 }
 
+// Check whether a previously-published post still exists on LinkedIn.
+// "unknown" means the app's token lacks read permission (w_member_social often can't read).
+export async function checkPostExists(
+  accessToken: string,
+  postUrn: string
+): Promise<"exists" | "deleted" | "unknown"> {
+  const res = await fetch(
+    `https://api.linkedin.com/v2/ugcPosts/${encodeURIComponent(postUrn)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+    }
+  );
+  if (res.status === 404 || res.status === 410) return "deleted";
+  if (res.ok) return "exists";
+  return "unknown"; // 401/403 = no read access, or transient error
+}
+
+// Delete a post from LinkedIn (own post — supported by w_member_social).
+export async function deletePost(accessToken: string, postUrn: string): Promise<void> {
+  const res = await fetch(
+    `https://api.linkedin.com/v2/ugcPosts/${encodeURIComponent(postUrn)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+    }
+  );
+  if (res.ok || res.status === 404 || res.status === 410) return; // already gone is fine
+
+  // Documents posted via the REST API need the REST delete endpoint
+  const res2 = await fetch(
+    `https://api.linkedin.com/rest/posts/${encodeURIComponent(postUrn)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+        "LinkedIn-Version": LINKEDIN_VERSION,
+      },
+    }
+  );
+  if (!res2.ok && res2.status !== 404 && res2.status !== 410) {
+    throw new Error(`LinkedIn delete failed (${res.status}/${res2.status})`);
+  }
+}
+
 export async function postComment(accessToken: string, postUrn: string, text: string) {
   const res = await fetch(
     "https://api.linkedin.com/v2/socialActions/" + encodeURIComponent(postUrn) + "/comments",

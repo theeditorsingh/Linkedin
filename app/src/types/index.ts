@@ -7,7 +7,8 @@ export type PostStatus =
   | "SCHEDULED"
   | "PUBLISHED"
   | "REJECTED"
-  | "FAILED";
+  | "FAILED"
+  | "REMOVED";
 
 export type PostFormat = "text" | "single_image" | "multi_image" | "carousel";
 

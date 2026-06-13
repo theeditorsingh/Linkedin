@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { publishScheduledPost } from "@/lib/publisher";
+import { syncOwnerPublishedPosts } from "@/lib/sync";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -22,5 +23,13 @@ export async function GET(req: NextRequest) {
     results.push({ id, ...result });
   }
 
-  return NextResponse.json({ count: results.length, results });
+  // Also reconcile published posts that were deleted on LinkedIn → mark REMOVED
+  let sync = null;
+  try {
+    sync = await syncOwnerPublishedPosts();
+  } catch (err) {
+    console.warn("[cron] sync failed:", err);
+  }
+
+  return NextResponse.json({ count: results.length, results, sync });
 }
