@@ -142,16 +142,22 @@ export default function NewPostPage() {
         if (!upRes.ok) throw new Error(await errMessage(upRes, "Failed to upload media"));
       }
 
-      // 3. Schedule (or publish now)
-      const at = publishNow ? new Date().toISOString() : new Date(scheduledAt).toISOString();
-      const schedRes = await fetch(`/api/posts/${post.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "SCHEDULED", scheduledAt: at }),
-      });
-      if (!schedRes.ok) throw new Error(await errMessage(schedRes, "Failed to schedule"));
-
-      toast.success(publishNow ? "Publishing now…" : "Scheduled!");
+      if (publishNow) {
+        // 3a. Publish immediately to LinkedIn
+        const pubRes = await fetch(`/api/posts/${post.id}/publish`, { method: "POST" });
+        if (!pubRes.ok) throw new Error(await errMessage(pubRes, "Failed to publish"));
+        toast.success("Published to LinkedIn! 🎉");
+      } else {
+        // 3b. Schedule for later
+        const at = new Date(scheduledAt).toISOString();
+        const schedRes = await fetch(`/api/posts/${post.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SCHEDULED", scheduledAt: at }),
+        });
+        if (!schedRes.ok) throw new Error(await errMessage(schedRes, "Failed to schedule"));
+        toast.success("Scheduled!");
+      }
       router.push("/");
     } catch (err) {
       toast.error((err as Error).message);

@@ -119,6 +119,21 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
     }
   }
 
+  async function handlePublishNow() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${live.id}/publish`, { method: "POST" });
+      if (!res.ok) throw new Error(await errMessage(res, "Failed to publish"));
+      toast.success("Published to LinkedIn! 🎉");
+      onUpdate();
+      onClose();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleReject() {
     setBusy(true);
     try {
@@ -347,12 +362,12 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
                       {busy ? "Scheduling…" : "Confirm schedule"}
                     </button>
                     <button
-                      onClick={() => handleSchedule(true)}
+                      onClick={handlePublishNow}
                       disabled={busy}
-                      className="w-full h-12 bg-white border border-[#dadce0] text-[#1a73e8] rounded-full font-medium text-[14px] flex items-center justify-center gap-2"
+                      className="w-full h-12 bg-white border border-[#dadce0] text-[#1a73e8] rounded-full font-medium text-[14px] flex items-center justify-center gap-2 disabled:opacity-60"
                     >
                       <Zap size={18} />
-                      Publish now
+                      {busy ? "Publishing…" : "Publish now"}
                     </button>
                     <button onClick={() => setMode("view")} className="w-full h-10 text-[#5f6368] text-[13px]">
                       Cancel
