@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -13,9 +13,20 @@ interface SettingsData {
   memberUrn: string | null;
 }
 
+function LinkedInAuthToast() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const linkedin = searchParams.get("linkedin");
+    const error = searchParams.get("error");
+    if (linkedin === "connected") toast.success("LinkedIn connected!");
+    if (error === "auth_failed") toast.error("LinkedIn auth failed — check required products below.");
+    if (error === "no_code") toast.error("LinkedIn didn't return an auth code.");
+  }, [searchParams]);
+  return null;
+}
+
 export default function SettingsPage() {
   const [data, setData] = useState<SettingsData | null>(null);
-  const searchParams = useSearchParams();
   const [copiedSlack, setCopiedSlack] = useState(false);
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -25,14 +36,6 @@ export default function SettingsPage() {
       .then(setData)
       .catch(console.error);
   }, []);
-
-  useEffect(() => {
-    const linkedin = searchParams.get("linkedin");
-    const error = searchParams.get("error");
-    if (linkedin === "connected") toast.success("LinkedIn connected!");
-    if (error === "auth_failed") toast.error("LinkedIn auth failed — check app products (see below).");
-    if (error === "no_code") toast.error("LinkedIn didn't return an auth code.");
-  }, [searchParams]);
 
   async function copySlackUrl() {
     await navigator.clipboard.writeText(`${appUrl}/api/slack`);
@@ -48,6 +51,10 @@ export default function SettingsPage() {
 
   return (
     <div className="px-5 pt-14 pb-28 space-y-6">
+      <Suspense fallback={null}>
+        <LinkedInAuthToast />
+      </Suspense>
+
       <h1 className="text-lg font-bold text-white">Settings</h1>
 
       {/* LinkedIn */}
@@ -91,7 +98,7 @@ export default function SettingsPage() {
               Connect your LinkedIn account to enable automatic publishing.
             </p>
             <div className="bg-amber-950 border border-amber-800 rounded-xl p-3 space-y-1">
-              <p className="text-xs text-amber-400 font-medium">Required: 2 products on your LinkedIn App</p>
+              <p className="text-xs text-amber-400 font-medium">Your LinkedIn Developer App needs 2 products:</p>
               <p className="text-xs text-amber-600">1. Sign In with LinkedIn using OpenID Connect</p>
               <p className="text-xs text-amber-600">2. Share on LinkedIn</p>
             </div>
@@ -113,33 +120,30 @@ export default function SettingsPage() {
           </div>
           <h2 className="text-sm font-semibold text-white">Slack Integration</h2>
         </div>
-
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Add this URL as an Interactivity Request URL in your Slack App settings to enable Approve/Reject from Slack.
+          Add this as the Interactivity Request URL in your Slack App to approve/reject posts from Slack.
         </p>
-
         <div className="bg-zinc-800 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
           <p className="text-xs text-zinc-300 font-mono truncate">{appUrl}/api/slack</p>
           <button onClick={copySlackUrl} className="flex-shrink-0 text-zinc-400 active:text-white">
             {copiedSlack ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
           </button>
         </div>
-
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Required env vars: <span className="font-mono text-zinc-400">SLACK_BOT_TOKEN</span>, {" "}
-          <span className="font-mono text-zinc-400">SLACK_SIGNING_SECRET</span>, {" "}
+          Env vars needed: <span className="font-mono text-zinc-400">SLACK_BOT_TOKEN</span>,{" "}
+          <span className="font-mono text-zinc-400">SLACK_SIGNING_SECRET</span>,{" "}
           <span className="font-mono text-zinc-400">SLACK_CHANNEL_ID</span>
         </p>
       </section>
 
-      {/* Schedule info */}
+      {/* Auto-Scheduler */}
       <section className="bg-zinc-900 rounded-2xl p-5 space-y-2">
         <h2 className="text-sm font-semibold text-white">Auto-Scheduler</h2>
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Posts are published via QStash at the exact scheduled time. A hourly cron runs as a safety net.
-          Make sure <span className="font-mono text-zinc-300">QSTASH_TOKEN</span>, {" "}
-          <span className="font-mono text-zinc-300">QSTASH_CURRENT_SIGNING_KEY</span>, and {" "}
-          <span className="font-mono text-zinc-300">QSTASH_NEXT_SIGNING_KEY</span> are set in Vercel.
+          Posts publish via QStash at the exact scheduled time. Daily cron runs as safety net.
+          Env vars needed: <span className="font-mono text-zinc-300">QSTASH_TOKEN</span>,{" "}
+          <span className="font-mono text-zinc-300">QSTASH_CURRENT_SIGNING_KEY</span>,{" "}
+          <span className="font-mono text-zinc-300">QSTASH_NEXT_SIGNING_KEY</span>
         </p>
       </section>
 
