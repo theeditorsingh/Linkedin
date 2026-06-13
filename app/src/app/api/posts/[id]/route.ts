@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { regeneratePost } from "@/lib/gemini/generate";
 import { sendApprovalRequest } from "@/lib/slack/notify";
+import { Client } from "@upstash/qstash";
 
 export async function GET(
   _req: NextRequest,
@@ -28,9 +29,7 @@ export async function PATCH(
     const post = await prisma.post.findUnique({ where: { id } });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const styleProfile = await prisma.styleProfile.findUnique({
-      where: { userId: post.userId },
-    });
+    const styleProfile = await prisma.styleProfile.findUnique({ where: { userId: post.userId } });
     const guideJson = styleProfile?.guideJson as Record<string, string> | null;
     const styleGuide = guideJson
       ? Object.entries(guideJson).map(([k, v]) => `${k}: ${v}`).join("\n")
@@ -47,20 +46,16 @@ export async function PATCH(
       data: { body: regenerated.body, imagePrompt: regenerated.imagePrompt, status: "IMAGE_NEEDED" },
     });
 
-    await prisma.postVersion.create({
-      data: { postId: id, body: regenerated.body, createdBy: "ai" },
-    });
-
+    await prisma.postVersion.create({ data: { postId: id, body: regenerated.body, createdBy: "ai" } });
     return NextResponse.json(updated);
   }
 
-  // Generic field update (status, scheduledAt, body, etc.)
-  const updated = await prisma.post.update({
-    where: { id },
-    data: body,
-  });
+  // Prepare update data — exclude non-prisma fields
+  const { action: _action, ...updateData } = body;
 
-  // If approving and image exists, send Slack approval request
+  const updated = await prisma.post.update({ where: { id }, data: updateData });
+
+  // If moving to IN_REVIEW with image, send Slack approval request
   if (body.status === "IN_REVIEW" && updated.imageAssetUrl) {
     if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
       await sendApprovalRequest(
@@ -70,6 +65,19 @@ export async function PATCH(
         updated.scheduledAt?.toISOString() ?? "Not scheduled"
       );
     }
+  }
+
+  // If scheduling, enqueue QStash job
+  if (body.status === "SCHEDULED" && body.scheduledAt && process.env.QSTASH_TOKEN && process.env.APP_URL) {
+    const scheduledAt = new Date(body.scheduledAt);
+    const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
+
+    const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+    await qstash.publishJSON({
+      url: `${process.env.APP_URL}/api/publish/${id}`,
+      delay: delaySeconds,
+      body: { postId: id },
+    });
   }
 
   return NextResponse.json(updated);

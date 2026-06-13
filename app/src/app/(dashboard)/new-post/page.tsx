@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
-const USER_ID = "demo-user";
+const USER_ID = "owner";
 
 export default function NewPostPage() {
   const router = useRouter();

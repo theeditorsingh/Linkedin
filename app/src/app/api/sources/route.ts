@@ -3,16 +3,18 @@ import { prisma } from "@/lib/db/prisma";
 import { extractFromUrl, extractFromText } from "@/lib/extract/source";
 import { generatePost } from "@/lib/gemini/generate";
 import { sendImageNeededAlert } from "@/lib/slack/notify";
+import { getOrCreateOwner } from "@/lib/user";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { type, url, text, userId } = body as {
+    const { type, url, text } = body as {
       type: "url" | "text";
       url?: string;
       text?: string;
-      userId: string;
     };
+    const owner = await getOrCreateOwner();
+    const userId = owner.id;
 
     // 1. Extract source content
     const extracted =

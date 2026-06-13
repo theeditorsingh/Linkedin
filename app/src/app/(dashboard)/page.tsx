@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { Post } from "@/types";
 
-const USER_ID = "demo-user"; // replaced with auth in Phase 2
+const USER_ID = "owner";
 
 export default function DashboardPage() {
   const [posts, setPosts] = useState<Post[]>([]);
