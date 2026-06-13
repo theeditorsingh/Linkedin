@@ -7,8 +7,17 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  // Strip pgbouncer param — not supported by raw pg driver
+  const url = (process.env.DATABASE_URL ?? "").replace("?pgbouncer=true", "");
+
+  const pool = new Pool({
+    connectionString: url,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    max: 1, // Serverless: keep pool small
+  });
+
   const adapter = new PrismaPg(pool);
+
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
