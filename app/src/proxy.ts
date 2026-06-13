@@ -3,16 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
-  "/api/auth/linkedin",  // LinkedIn OAuth redirect + callback
-  "/api/slack",          // Slack interactive actions
-  "/api/publish",        // QStash publish callbacks (verify via QStash signature)
-  "/api/cron",           // Vercel Cron (verify via CRON_SECRET)
+  "/api/auth/linkedin",
+  "/api/slack",
+  "/api/publish",
+  "/api/cron",
 ];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public paths and static assets
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith("/_next") ||

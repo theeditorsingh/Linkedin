@@ -37,8 +37,12 @@ export default function NewPostPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Something went wrong");
+        let message = `Server error (${res.status})`;
+        try {
+          const err = await res.json();
+          message = err.error ?? message;
+        } catch { /* response was not JSON */ }
+        throw new Error(message);
       }
 
       toast.success("Post generated! Check your board.");
