@@ -1,6 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// The API key gets sent as an HTTP header. If a BOM (U+FEFF) or stray whitespace got
+// pasted into the GEMINI_API_KEY env var, the header fails with a "ByteString" error.
+// Keep only printable ASCII (0x21-0x7E) — API keys never contain anything else.
+function cleanKey(key: string): string {
+  let out = "";
+  for (let i = 0; i < key.length; i++) {
+    const code = key.charCodeAt(i);
+    if (code >= 0x21 && code <= 0x7e) out += key[i];
+  }
+  return out;
+}
+
+const genAI = new GoogleGenerativeAI(cleanKey(process.env.GEMINI_API_KEY ?? ""));
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // The Gemini SDK throws "Cannot convert argument to a ByteString" if the prompt contains
