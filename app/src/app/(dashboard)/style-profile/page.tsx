@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft } from "lucide-react";
 
 export default function StyleProfilePage() {
+  const router = useRouter();
   const [examples, setExamples] = useState<string[]>([""]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,11 +23,9 @@ export default function StyleProfilePage() {
   function updateExample(i: number, val: string) {
     setExamples((prev) => prev.map((e, idx) => (idx === i ? val : e)));
   }
-
   function addExample() {
     setExamples((prev) => [...prev, ""]);
   }
-
   function removeExample(i: number) {
     setExamples((prev) => prev.filter((_, idx) => idx !== i));
   }
@@ -56,65 +54,68 @@ export default function StyleProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full pt-20">
-        <Loader2 size={24} className="animate-spin text-zinc-500" />
+      <div className="flex items-center justify-center pt-24">
+        <Loader2 size={24} className="animate-spin text-[#5f6368]" />
       </div>
     );
   }
 
-  return (
-    <div className="px-5 pt-14 pb-32">
-      <div className="mb-6">
-        <h1 className="text-lg font-bold text-white">Style Profile</h1>
-        <p className="text-xs text-zinc-500 mt-1">
-          Paste your best LinkedIn posts — AI will write in your exact style
-        </p>
-      </div>
+  const filledCount = examples.filter((e) => e.trim()).length;
 
-      <div className="space-y-4">
+  return (
+    <div className="px-5 pt-12 pb-36">
+      <button
+        onClick={() => router.push("/settings")}
+        className="inline-flex items-center gap-1 text-[14px] text-[#1a73e8] mb-3"
+      >
+        <ArrowLeft size={18} /> Settings
+      </button>
+
+      <h1 className="text-[22px] font-medium text-[#1f1f1f] tracking-tight">Writing style</h1>
+      <p className="text-[13px] text-[#5f6368] mt-1 mb-6">
+        Paste your best LinkedIn posts — the AI will write in your exact voice.
+      </p>
+
+      <div className="space-y-3">
         {examples.map((ex, i) => (
-          <div key={i} className="relative">
-            <Textarea
-              placeholder={`Paste one of your LinkedIn posts here…\n\nExample post ${i + 1}`}
+          <div key={i} className="bg-white rounded-3xl p-4 elevation-1 relative">
+            <textarea
+              placeholder={`Paste one of your LinkedIn posts here…  (example ${i + 1})`}
               value={ex}
               onChange={(e) => updateExample(i, e.target.value)}
-              className="min-h-36 bg-zinc-900 border-zinc-700 text-white rounded-xl text-sm p-4 leading-relaxed resize-none pr-10"
+              rows={5}
+              className="w-full bg-transparent text-[#3c4043] text-[14px] leading-relaxed resize-none focus:outline-none pr-8"
             />
             {examples.length > 1 && (
               <button
                 onClick={() => removeExample(i)}
-                className="absolute top-3 right-3 text-zinc-600 active:text-red-400"
+                className="absolute top-3 right-3 text-[#9aa0a6] active:text-[#c5221f]"
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
               </button>
             )}
-            <p className="text-xs text-zinc-600 mt-1 text-right">
-              {ex.length} chars
-            </p>
+            <p className="text-[11px] text-[#9aa0a6] text-right mt-1">{ex.length} chars</p>
           </div>
         ))}
       </div>
 
       <button
         onClick={addExample}
-        className="flex items-center gap-2 text-sm text-[#0A66C2] mt-4 mb-6"
+        className="flex items-center gap-2 text-[14px] font-medium text-[#1a73e8] mt-4"
       >
-        <Plus size={16} />
-        Add another post ({examples.filter((e) => e.trim()).length}/20 added)
+        <Plus size={18} />
+        Add another post · {filledCount} added
       </button>
 
-      <div className="fixed bottom-20 left-5 right-5">
-        <Button
+      <div className="fixed bottom-24 left-5 right-5">
+        <button
           onClick={save}
           disabled={saving}
-          className="w-full h-14 bg-[#0A66C2] hover:bg-blue-600 text-white font-semibold rounded-xl text-base"
+          className="w-full h-14 bg-[#1a73e8] text-white font-medium rounded-full text-[15px] flex items-center justify-center gap-2 elevation-2 disabled:opacity-60 active:scale-[0.99] transition-transform"
         >
-          {saving ? (
-            <><Loader2 size={18} className="mr-2 animate-spin" /> Saving…</>
-          ) : (
-            <><Save size={18} className="mr-2" /> Save Style Profile</>
-          )}
-        </Button>
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saving ? "Saving…" : "Save style profile"}
+        </button>
       </div>
     </div>
   );

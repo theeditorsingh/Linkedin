@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist } from "next/font/google";
+import { Roboto } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
-const inter = Inter({ subsets: ["latin"] });
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-roboto",
+});
 
 export const metadata: Metadata = {
   title: "LinkedIn Autopilot",
@@ -14,13 +15,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "LI Autopilot",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A66C2",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -33,10 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("dark h-full", "font-sans", geist.variable)}>
-      <body className={`${inter.className} h-full bg-black text-white antialiased`}>
+    <html lang="en" className={`${roboto.variable} h-full`}>
+      <body className="h-full antialiased">
         {children}
-        <Toaster position="top-center" theme="dark" richColors />
+        <Toaster position="top-center" theme="light" richColors />
       </body>
     </html>
   );

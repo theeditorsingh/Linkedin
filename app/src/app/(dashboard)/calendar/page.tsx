@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { Post } from "@/types";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: "bg-[#0A66C2]",
-  PUBLISHED: "bg-emerald-500",
-};
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 
 function groupByDate(posts: Post[]): Map<string, Post[]> {
   const map = new Map<string, Post[]>();
@@ -31,146 +26,138 @@ export default function CalendarPage() {
     fetch("/api/posts?userId=owner")
       .then((r) => r.json())
       .then((data: Post[]) => {
-        const filtered = data.filter((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED");
-        setPosts(filtered);
+        setPosts(data.filter((p) => p.status === "SCHEDULED" || p.status === "PUBLISHED"));
         setLoading(false);
       });
   }, []);
 
   const grouped = groupByDate(posts);
   const monthStart = startOfMonth(viewDate);
-  const monthEnd = endOfMonth(viewDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startPad = getDay(monthStart); // 0 = Sunday
-
-  function prevMonth() {
-    setViewDate((d) => {
-      const n = new Date(d);
-      n.setMonth(n.getMonth() - 1);
-      return n;
-    });
-  }
-  function nextMonth() {
-    setViewDate((d) => {
-      const n = new Date(d);
-      n.setMonth(n.getMonth() + 1);
-      return n;
-    });
-  }
-
+  const days = eachDayOfInterval({ start: monthStart, end: endOfMonth(viewDate) });
+  const startPad = getDay(monthStart);
   const today = new Date();
 
+  const shiftMonth = (delta: number) =>
+    setViewDate((d) => {
+      const n = new Date(d);
+      n.setMonth(n.getMonth() + delta);
+      return n;
+    });
+
+  const sorted = [...posts].sort((a, b) => {
+    const da = new Date(a.scheduledAt ?? a.publishedAt ?? 0).getTime();
+    const db = new Date(b.scheduledAt ?? b.publishedAt ?? 0).getTime();
+    return da - db;
+  });
+
   return (
-    <div className="px-4 pt-14 pb-24">
-      {/* Month nav */}
-      <div className="flex items-center justify-between mb-5">
-        <button onClick={prevMonth} className="p-2 text-zinc-400 active:text-white">
-          <ChevronLeft size={22} />
-        </button>
-        <h1 className="text-base font-bold text-white">
-          {format(viewDate, "MMMM yyyy")}
-        </h1>
-        <button onClick={nextMonth} className="p-2 text-zinc-400 active:text-white">
-          <ChevronRight size={22} />
-        </button>
-      </div>
+    <div className="px-4 pt-12 pb-28">
+      <h1 className="text-[22px] font-medium text-[#1f1f1f] tracking-tight px-1 mb-4">Calendar</h1>
 
-      {/* Day headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-          <div key={d} className="text-center text-xs text-zinc-600 py-1">{d}</div>
-        ))}
-      </div>
+      {/* Month card */}
+      <div className="bg-white rounded-3xl p-4 elevation-1">
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => shiftMonth(-1)} className="w-9 h-9 rounded-full active:bg-[#f1f3f4] flex items-center justify-center text-[#5f6368]">
+            <ChevronLeft size={20} />
+          </button>
+          <h2 className="text-[15px] font-medium text-[#1f1f1f]">{format(viewDate, "MMMM yyyy")}</h2>
+          <button onClick={() => shiftMonth(1)} className="w-9 h-9 rounded-full active:bg-[#f1f3f4] flex items-center justify-center text-[#5f6368]">
+            <ChevronRight size={20} />
+          </button>
+        </div>
 
-      {/* Calendar grid */}
-      {loading ? (
-        <p className="text-center text-zinc-600 text-sm py-10">Loading…</p>
-      ) : (
-        <div className="grid grid-cols-7 gap-[2px]">
-          {/* Padding cells */}
-          {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} className="aspect-square" />
+        <div className="grid grid-cols-7 mb-1">
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+            <div key={i} className="text-center text-[11px] text-[#9aa0a6] py-1">{d}</div>
           ))}
+        </div>
 
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayPosts = grouped.get(key) ?? [];
-            const isToday = isSameDay(day, today);
-            return (
-              <div
-                key={key}
-                className={`aspect-square rounded-xl p-1 flex flex-col items-center ${
-                  isToday ? "bg-zinc-800" : ""
-                }`}
-              >
-                <span className={`text-xs mb-0.5 ${isToday ? "text-[#0A66C2] font-bold" : "text-zinc-400"}`}>
-                  {format(day, "d")}
-                </span>
-                <div className="flex flex-col gap-0.5 w-full">
-                  {dayPosts.slice(0, 2).map((p) => (
-                    <div
-                      key={p.id}
-                      className={`h-1.5 rounded-full w-full ${STATUS_COLOR[p.status] ?? "bg-zinc-600"}`}
-                    />
-                  ))}
-                  {dayPosts.length > 2 && (
-                    <span className="text-[9px] text-zinc-600 text-center">+{dayPosts.length - 2}</span>
-                  )}
+        {loading ? (
+          <p className="text-center text-[#9aa0a6] text-[13px] py-8">Loading…</p>
+        ) : (
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: startPad }).map((_, i) => (
+              <div key={`pad-${i}`} className="aspect-square" />
+            ))}
+            {days.map((day) => {
+              const key = format(day, "yyyy-MM-dd");
+              const dayPosts = grouped.get(key) ?? [];
+              const isToday = isSameDay(day, today);
+              const has = dayPosts.length > 0;
+              return (
+                <div key={key} className="aspect-square flex flex-col items-center justify-center">
+                  <div
+                    className={`w-9 h-9 flex items-center justify-center rounded-full text-[13px] ${
+                      isToday
+                        ? "bg-[#1a73e8] text-white font-medium"
+                        : has
+                        ? "bg-[#e8f0fe] text-[#1967d2] font-medium"
+                        : "text-[#3c4043]"
+                    }`}
+                  >
+                    {format(day, "d")}
+                  </div>
+                  {has && !isToday && <div className="w-1 h-1 rounded-full bg-[#1a73e8] mt-0.5" />}
+                  {has && isToday && <div className="w-1 h-1 rounded-full bg-[#1a73e8] mt-0.5" />}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* List */}
+      <h2 className="text-[13px] font-medium text-[#5f6368] uppercase tracking-wide mt-7 mb-3 px-1">
+        Upcoming & published
+      </h2>
+
+      {!loading && sorted.length === 0 && (
+        <div className="flex flex-col items-center py-14 text-center">
+          <div className="w-14 h-14 rounded-full bg-[#e8f0fe] flex items-center justify-center mb-3">
+            <CalendarDays size={24} className="text-[#1a73e8]" />
+          </div>
+          <p className="text-[14px] text-[#5f6368]">No scheduled or published posts yet.</p>
         </div>
       )}
 
-      {/* Post list below calendar */}
-      <div className="mt-8 space-y-3">
-        <h2 className="text-xs text-zinc-500 uppercase tracking-widest">Upcoming & Published</h2>
-        {posts.length === 0 && !loading && (
-          <p className="text-sm text-zinc-600">No scheduled or published posts yet.</p>
-        )}
-        {posts
-          .sort((a, b) => {
-            const da = new Date(a.scheduledAt ?? a.publishedAt ?? 0).getTime();
-            const db = new Date(b.scheduledAt ?? b.publishedAt ?? 0).getTime();
-            return da - db;
-          })
-          .map((p) => {
-            const date = p.scheduledAt ?? p.publishedAt;
-            return (
-              <div key={p.id} className="bg-zinc-900 rounded-2xl p-4 flex gap-3 items-start">
-                <div className="flex-shrink-0 text-center min-w-[42px]">
-                  {date && (
-                    <>
-                      <p className="text-xs text-zinc-500">{format(new Date(date), "MMM")}</p>
-                      <p className="text-xl font-bold text-white leading-none">{format(new Date(date), "d")}</p>
-                      <p className="text-xs text-zinc-500">{format(new Date(date), "h:mm a")}</p>
-                    </>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                      p.status === "PUBLISHED" ? "bg-emerald-900 text-emerald-400" : "bg-blue-950 text-[#0A66C2]"
-                    }`}>
-                      {p.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-zinc-300 line-clamp-2 leading-snug">{p.body}</p>
-                  {p.linkedinPostUrn && (
-                    <a
-                      href={`https://www.linkedin.com/feed/update/${p.linkedinPostUrn}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-[#0A66C2] mt-1 inline-block"
-                    >
-                      View on LinkedIn ↗
-                    </a>
-                  )}
-                </div>
+      <div className="space-y-3">
+        {sorted.map((p) => {
+          const date = p.scheduledAt ?? p.publishedAt;
+          const published = p.status === "PUBLISHED";
+          return (
+            <div key={p.id} className="bg-white rounded-3xl p-4 elevation-1 flex gap-3">
+              <div className="flex-shrink-0 w-12 text-center">
+                {date && (
+                  <>
+                    <p className="text-[11px] text-[#9aa0a6] uppercase">{format(new Date(date), "MMM")}</p>
+                    <p className="text-[22px] font-medium text-[#1f1f1f] leading-tight">{format(new Date(date), "d")}</p>
+                    <p className="text-[11px] text-[#5f6368]">{format(new Date(date), "h:mm a")}</p>
+                  </>
+                )}
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-0 border-l border-[#e8eaed] pl-3">
+                <span
+                  className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mb-1 ${
+                    published ? "bg-[#e6f4ea] text-[#188038]" : "bg-[#e8f0fe] text-[#1967d2]"
+                  }`}
+                >
+                  {published ? "Published" : "Scheduled"}
+                </span>
+                <p className="text-[14px] text-[#3c4043] line-clamp-2 leading-snug">{p.body}</p>
+                {p.linkedinPostUrn && (
+                  <a
+                    href={`https://www.linkedin.com/feed/update/${p.linkedinPostUrn}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] text-[#1a73e8] mt-1 inline-block"
+                  >
+                    View on LinkedIn ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

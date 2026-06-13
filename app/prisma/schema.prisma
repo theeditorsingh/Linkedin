@@ -104,6 +104,7 @@ model Approval {
   actor   String
   action  String   // 'approve' | 'reject' | 'regenerate'
   channel String   // 'slack' | 'app'
+  note    String?  @db.Text // optional reason, e.g. why a post was rejected
   actedAt DateTime @default(now()) @map("acted_at")
 
   post Post @relation(fields: [postId], references: [id])

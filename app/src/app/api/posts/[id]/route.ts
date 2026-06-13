@@ -52,9 +52,29 @@ export async function PATCH(
   }
 
   // Prepare update data — exclude non-prisma fields
-  const { action: _action, ...updateData } = body;
+  const { action: _action, rejectReason, ...updateData } = body;
 
   const updated = await prisma.post.update({ where: { id }, data: updateData });
+
+  // Record a rejection with its optional reason
+  if (body.status === "REJECTED") {
+    await prisma.approval.create({
+      data: {
+        postId: id,
+        actor: "app",
+        action: "reject",
+        channel: "app",
+        note: typeof rejectReason === "string" && rejectReason.trim() ? rejectReason.trim() : null,
+      },
+    });
+  }
+
+  // Record an approval action
+  if (body.status === "APPROVED" || body.status === "SCHEDULED") {
+    await prisma.approval.create({
+      data: { postId: id, actor: "app", action: "approve", channel: "app" },
+    });
+  }
 
   // If moving to IN_REVIEW with image, send Slack approval request
   if (body.status === "IN_REVIEW" && updated.imageAssetUrl) {
@@ -89,6 +109,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  await prisma.post.delete({ where: { id } });
+  // Remove dependent rows first — no DB-level cascade is configured
+  await prisma.$transaction([
+    prisma.approval.deleteMany({ where: { postId: id } }),
+    prisma.postVersion.deleteMany({ where: { postId: id } }),
+    prisma.post.delete({ where: { id } }),
+  ]);
   return NextResponse.json({ ok: true });
 }
