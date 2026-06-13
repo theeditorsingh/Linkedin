@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       examplePosts
     );
 
-    // 5. Save draft post
+    // 5. Save draft post — text posts need no image, so they go straight to review
     const post = await prisma.post.create({
       data: {
         userId,
@@ -66,7 +66,11 @@ export async function POST(req: NextRequest) {
         firstComment: generated.firstComment,
         hashtags: generated.hashtags,
         imagePrompt: generated.imagePrompt,
-        status: "IMAGE_NEEDED",
+        format: generated.format,
+        formatReason: generated.formatReason,
+        mediaType: generated.format === "carousel" ? "document" : "image",
+        slidePrompts: generated.slidePrompts,
+        status: generated.format === "text" ? "IN_REVIEW" : "IMAGE_NEEDED",
       },
     });
 

@@ -1,22 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Post } from "@/types";
 import { Drawer } from "vaul";
 import { STATUS_META } from "@/lib/status";
-import {
-  Copy,
-  Check,
-  Upload,
-  Trash2,
-  CalendarClock,
-  Zap,
-  X,
-  AlertTriangle,
-  Pencil,
-} from "lucide-react";
+import { Check, Trash2, CalendarClock, Zap, X, AlertTriangle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { MediaSection } from "./MediaSection";
 
 interface PostSheetProps {
   post: Post;
@@ -47,13 +38,10 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
     setLive(post);
   }, [post]);
 
-  const [copied, setCopied] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<Mode>("view");
   const [scheduledAt, setScheduledAt] = useState(defaultScheduleTime);
   const [reason, setReason] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
   const [eBody, setEBody] = useState("");
@@ -108,33 +96,6 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
       toast.error((err as Error).message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function copyPrompt() {
-    await navigator.clipboard.writeText(live.imagePrompt ?? "");
-    setCopied(true);
-    toast.success("Image prompt copied");
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("postId", live.id);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("Image uploaded — moved to In review");
-      onUpdate();
-      onClose();
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -314,37 +275,8 @@ export function PostSheet({ post, open, onClose, onUpdate }: PostSheetProps) {
                   </div>
                 )}
 
-                {/* Image */}
-                {live.imageAssetUrl ? (
-                  <img src={live.imageAssetUrl} alt="Post" className="w-full rounded-3xl object-cover max-h-60" />
-                ) : live.imagePrompt ? (
-                  <div className="bg-[#fef7e0] rounded-3xl p-4 space-y-3">
-                    <p className="text-[12px] text-[#b06000] font-medium">Image prompt — paste into ChatGPT</p>
-                    <p className="text-[13px] text-[#5f6368] leading-relaxed">{live.imagePrompt}</p>
-                    <button
-                      onClick={copyPrompt}
-                      className="w-full h-12 bg-[#1a73e8] text-white rounded-full font-medium text-[14px] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
-                    >
-                      {copied ? <Check size={18} /> : <Copy size={18} />}
-                      {copied ? "Copied!" : "Copy image prompt"}
-                    </button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handleUpload}
-                    />
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      disabled={uploading}
-                      className="w-full h-12 bg-white border border-[#dadce0] text-[#1a73e8] rounded-full font-medium text-[14px] flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      <Upload size={18} />
-                      {uploading ? "Uploading…" : "Upload generated image"}
-                    </button>
-                  </div>
-                ) : null}
+                {/* Media — format selector, prompts, multi-image / PDF upload */}
+                <MediaSection post={live} onChange={onUpdate} />
 
                 {/* ---- Action area ---- */}
                 {mode === "view" && (

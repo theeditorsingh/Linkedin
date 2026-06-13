@@ -57,6 +57,11 @@ model Post {
   hashtags         String[]
   imagePrompt      String?   @map("image_prompt") @db.Text
   imageAssetUrl    String?   @map("image_asset_url")
+  format           String    @default("single_image") // text | single_image | multi_image | carousel
+  formatReason     String?   @map("format_reason") @db.Text
+  mediaType        String    @default("image") @map("media_type") // image | document
+  mediaUrls        String[]  @default([]) @map("media_urls")
+  slidePrompts     String[]  @default([]) @map("slide_prompts")
   status           PostStatus @default(IDEA)
   scheduledAt      DateTime? @map("scheduled_at")
   publishedAt      DateTime? @map("published_at")

@@ -22,7 +22,16 @@ export async function publishScheduledPost(postId: string): Promise<{ ok: true; 
 
   const accessToken = decrypt(token.accessToken);
 
-  const postUrn = await publishPost(accessToken, memberUrn, post.body, post.imageAssetUrl ?? undefined);
+  const media =
+    post.mediaType === "document" && post.mediaUrls.length
+      ? { type: "document" as const, urls: post.mediaUrls }
+      : post.mediaUrls.length
+        ? { type: "image" as const, urls: post.mediaUrls }
+        : post.imageAssetUrl
+          ? { type: "image" as const, urls: [post.imageAssetUrl] }
+          : { type: "none" as const, urls: [] };
+
+  const postUrn = await publishPost(accessToken, memberUrn, post.body, media);
 
   if (post.firstComment) {
     await postComment(accessToken, postUrn, post.firstComment);

@@ -2,7 +2,7 @@
 
 import { Post } from "@/types";
 import { STATUS_META } from "@/lib/status";
-import { ImageIcon, CalendarClock, ChevronRight, AlertCircle } from "lucide-react";
+import { ImageIcon, Images, GalleryHorizontal, CalendarClock, ChevronRight, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
 function actionHint(post: Post): { text: string; tone: "action" | "muted" } | null {
   switch (post.status) {
     case "IMAGE_NEEDED":
+      if (post.format === "carousel") return { text: "Add carousel", tone: "action" };
+      if (post.format === "multi_image") return { text: "Add images", tone: "action" };
       return { text: "Add image", tone: "action" };
     case "IN_REVIEW":
       return { text: "Review & approve", tone: "action" };
@@ -22,6 +24,14 @@ function actionHint(post: Post): { text: string; tone: "action" | "muted" } | nu
     default:
       return null;
   }
+}
+
+function MediaIcon({ post }: { post: Post }) {
+  if (post.format === "carousel") return <GalleryHorizontal size={14} className="text-[#9aa0a6] shrink-0" />;
+  if (post.format === "multi_image") return <Images size={14} className="text-[#9aa0a6] shrink-0" />;
+  if (post.mediaUrls.length > 0 || post.imageAssetUrl)
+    return <ImageIcon size={14} className="text-[#9aa0a6] shrink-0" />;
+  return null;
 }
 
 export function PostListItem({ post, onClick }: Props) {
@@ -42,9 +52,7 @@ export function PostListItem({ post, onClick }: Props) {
           <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
           {meta.label}
         </span>
-        {post.imageAssetUrl && (
-          <ImageIcon size={14} className="text-[#9aa0a6] shrink-0" />
-        )}
+        <MediaIcon post={post} />
         {post.status === "FAILED" && (
           <AlertCircle size={14} className="text-[#ea4335] shrink-0" />
         )}

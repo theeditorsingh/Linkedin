@@ -9,6 +9,8 @@ export type PostStatus =
   | "REJECTED"
   | "FAILED";
 
+export type PostFormat = "text" | "single_image" | "multi_image" | "carousel";
+
 export interface Post {
   id: string;
   userId: string;
@@ -18,6 +20,11 @@ export interface Post {
   hashtags: string[];
   imagePrompt?: string;
   imageAssetUrl?: string;
+  format: PostFormat;
+  formatReason?: string;
+  mediaType: "image" | "document";
+  mediaUrls: string[];
+  slidePrompts: string[];
   status: PostStatus;
   scheduledAt?: string;
   publishedAt?: string;

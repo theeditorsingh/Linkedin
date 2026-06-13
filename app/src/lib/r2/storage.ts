@@ -16,25 +16,33 @@ export async function ensureBucketExists() {
   }
 }
 
-export async function uploadImage(
+function extFor(contentType: string): string {
+  if (contentType.includes("pdf")) return "pdf";
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+  return "jpg";
+}
+
+// Upload one file (image or pdf) under the post's folder, indexed so multiple coexist.
+export async function uploadFile(
   postId: string,
+  index: number,
   file: Buffer,
   contentType: string
 ): Promise<string> {
-  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-  const path = `${postId}/image.${ext}`;
-
+  const path = `${postId}/media-${index}.${extFor(contentType)}`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, { contentType, upsert: true });
-
   if (error) throw new Error(`Upload failed: ${error.message}`);
-
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 
-export async function deleteImage(postId: string) {
-  const files = [`${postId}/image.jpg`, `${postId}/image.png`, `${postId}/image.webp`];
-  await supabase.storage.from(BUCKET).remove(files);
+// Remove every file previously uploaded for a post (best-effort).
+export async function clearMedia(postId: string) {
+  const { data } = await supabase.storage.from(BUCKET).list(postId);
+  if (data?.length) {
+    await supabase.storage.from(BUCKET).remove(data.map((f) => `${postId}/${f.name}`));
+  }
 }
