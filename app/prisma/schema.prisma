@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  slackUserId        String?  @map("slack_user_id")
+  linkedinMemberUrn  String?  @map("linkedin_member_urn")
+  settings           Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  styleProfile  StyleProfile?
+  posts         Post[]
+  oauthTokens   OAuthToken[]
+
+  @@map("users")
+}
+
+model StyleProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique @map("user_id")
+  guideJson    Json     @map("guide_json")
+  examplePosts String[] @map("example_posts")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("style_profiles")
+}
+
+model Source {
+  id            String   @id @default(cuid())
+  url           String?
+  type          String   // 'url' | 'text' | 'rss'
+  title         String?
+  extractedText String?  @map("extracted_text") @db.Text
+  ogImageUrl    String?  @map("og_image_url")
+  fetchedAt     DateTime @default(now()) @map("fetched_at")
+
+  posts Post[]
+
+  @@map("sources")
+}
+
+model Post {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  sourceId         String?   @map("source_id")
+  body             String    @db.Text
+  firstComment     String?   @map("first_comment") @db.Text
+  hashtags         String[]
+  imagePrompt      String?   @map("image_prompt") @db.Text
+  imageAssetUrl    String?   @map("image_asset_url")
+  status           PostStatus @default(IDEA)
+  scheduledAt      DateTime? @map("scheduled_at")
+  publishedAt      DateTime? @map("published_at")
+  linkedinPostUrn  String?   @map("linkedin_post_urn")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id])
+  source    Source?       @relation(fields: [sourceId], references: [id])
+  versions  PostVersion[]
+  approvals Approval[]
+
+  @@map("posts")
+}
+
+enum PostStatus {
+  IDEA
+  DRAFTING
+  IMAGE_NEEDED
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  REJECTED
+  FAILED
+
+  @@map("post_status")
+}
+
+model PostVersion {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  body      String   @db.Text
+  createdBy String   @map("created_by") // 'ai' | 'user'
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("post_versions")
+}
+
+model Approval {
+  id      String   @id @default(cuid())
+  postId  String   @map("post_id")
+  actor   String
+  action  String   // 'approve' | 'reject' | 'regenerate'
+  channel String   // 'slack' | 'app'
+  actedAt DateTime @default(now()) @map("acted_at")
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("approvals")
+}
+
+model OAuthToken {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  provider     String    // 'linkedin' | 'slack'
+  accessToken  String    @map("access_token")
+  expiresAt    DateTime? @map("expires_at")
+  refreshToken String?   @map("refresh_token")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, provider])
+  @@map("oauth_tokens")
+}
